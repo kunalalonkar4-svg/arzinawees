@@ -1,0 +1,11 @@
+node_modules
+.next
+.env
+.env.local
+android-keys/
+android/.gradle/
+android/app/build/
+android/build/
+.apk-cache/
+public/arzinawees.apk
+*.jks

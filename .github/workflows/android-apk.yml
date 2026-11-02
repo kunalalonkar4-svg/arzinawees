@@ -1,0 +1,51 @@
+# Android APK (TWA) banata hai aur GitHub Release "app-latest" par "Arzinawees.apk" daalta hai.
+# Website ka download button isi link par jaata hai.
+# Zaroori secret: APK_KEY_PASSWORD (repo Settings > Secrets and variables > Actions)
+name: Android APK
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ["android/**", ".github/workflows/android-apk.yml"]
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Keystore kholo
+        env:
+          APK_KEY_PASSWORD: ${{ secrets.APK_KEY_PASSWORD }}
+        run: |
+          test -n "$APK_KEY_PASSWORD" || { echo "::error::APK_KEY_PASSWORD secret nahi hai"; exit 1; }
+          openssl enc -d -aes-256-cbc -pbkdf2 -iter 200000 -in android/keystore.jks.enc -out "$RUNNER_TEMP/arzinawees.jks" -pass "pass:$APK_KEY_PASSWORD"
+
+      - name: APK banao
+        working-directory: android
+        env:
+          APK_KEY_PASSWORD: ${{ secrets.APK_KEY_PASSWORD }}
+          APK_KEYSTORE: ${{ runner.temp }}/arzinawees.jks
+        run: |
+          chmod +x gradlew
+          ./gradlew --no-daemon assembleRelease
+          cp app/build/outputs/apk/release/app-release.apk "$RUNNER_TEMP/Arzinawees.apk"
+          ls -la "$RUNNER_TEMP/Arzinawees.apk"
+
+      - name: Release par daalo
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: app-latest
+          name: Arzinawees Android app
+          body: "Arzinawees ka Android app. Website: https://arzinawees.netlify.app/app"
+          make_latest: true
+          files: ${{ runner.temp }}/Arzinawees.apk

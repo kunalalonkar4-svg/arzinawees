@@ -1,0 +1,10 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "in.arzinawees.app",
+      "sha256_cert_fingerprints": ["2C:CD:0E:63:BC:C5:93:5F:25:20:4F:9E:81:74:A6:FA:1D:C2:15:7D:3D:7D:73:99:D0:D5:B9:6E:7C:0A:9F:99"]
+    }
+  }
+]
