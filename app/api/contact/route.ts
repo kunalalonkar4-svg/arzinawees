@@ -4,9 +4,29 @@ import { allow, ipOf } from "@/lib/ratelimit";
 
 export const runtime = "nodejs";
 
+const SB_URL = process.env.SUPABASE_URL;
+const SB_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const useSupabase = Boolean(SB_URL && SB_KEY);
 const store = () => getStore({ name: "messages", consistency: "strong" });
 const onNetlify = () => Boolean(process.env.NETLIFY || process.env.NETLIFY_BLOBS_CONTEXT || process.env.SITE_ID);
+const canSave = () => useSupabase || onNetlify();
 const TYPES = ["feedback", "help", "complaint", "other"];
+
+async function sb(path: string, init: RequestInit = {}) {
+  const res = await fetch(`${SB_URL}/rest/v1/${path}`, {
+    ...init,
+    headers: {
+      apikey: SB_KEY!,
+      Authorization: `Bearer ${SB_KEY}`,
+      "Content-Type": "application/json",
+      ...(init.headers || {}),
+    },
+    cache: "no-store",
+  });
+  if (!res.ok) throw new Error(`DB error ${res.status}: ${await res.text()}`);
+  const text = await res.text();
+  return text ? JSON.parse(text) : null;
+}
 
 // Contact / feedback / Arzinawees ke khilaaf shikayat
 export async function POST(req: Request) {
@@ -23,9 +43,13 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "नाम, मोबाइल/ईमेल और कम से कम 10 अक्षर का संदेश लिखें।" }, { status: 400 });
   }
   const id = "MSG-" + Date.now().toString(36).toUpperCase() + Math.random().toString(36).slice(2, 5).toUpperCase();
-  if (!onNetlify()) return NextResponse.json({ ok: true, id, saved: false });
+  if (!canSave()) return NextResponse.json({ ok: true, id, saved: false });
   try {
-    await store().setJSON(id, { id, name, contact, message, type, created_at: new Date().toISOString(), done: false });
+    if (useSupabase) {
+      await sb("web_messages", { method: "POST", body: JSON.stringify({ id, name, contact, message, type }) });
+    } else {
+      await store().setJSON(id, { id, name, contact, message, type, created_at: new Date().toISOString(), done: false });
+    }
     return NextResponse.json({ ok: true, id, saved: true });
   } catch {
     return NextResponse.json({ error: "संदेश सेव नहीं हुआ। कृपया ईमेल करें।" }, { status: 500 });
@@ -38,7 +62,11 @@ export async function GET(req: Request) {
   if (!pw || pw.length < 10 || req.headers.get("x-admin-password") !== pw) {
     return NextResponse.json({ error: "Galat password" }, { status: 401 });
   }
-  if (!onNetlify()) return NextResponse.json({ messages: [] });
+  if (!canSave()) return NextResponse.json({ messages: [] });
+  if (useSupabase) {
+    const rows = await sb("web_messages?select=*&order=created_at.desc&limit=300");
+    return NextResponse.json({ messages: rows });
+  }
   const s = store();
   const { blobs } = await s.list();
   const rows = (await Promise.all(blobs.map((x) => s.get(x.key, { type: "json" })))).filter(Boolean) as any[];
