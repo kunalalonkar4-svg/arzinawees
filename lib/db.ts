@@ -1,5 +1,5 @@
-// Cases ka record. Default: Netlify Blobs (koi alag account ya key nahi chahiye).
-// Agar SUPABASE_URL + SUPABASE_SERVICE_ROLE_KEY diye hon to Supabase use hota hai.
+// Cases ka record. Vercel par: Supabase (SUPABASE_URL + SUPABASE_SERVICE_ROLE_KEY), table "web_cases".
+// Netlify par agar Supabase keys na hon to Netlify Blobs use hota hai.
 import { getStore } from "@netlify/blobs";
 
 const SB_URL = process.env.SUPABASE_URL;
@@ -50,13 +50,13 @@ async function sb(path: string, init: RequestInit = {}) {
 
 export async function insertCase(row: CaseRow) {
   const full = { ...row, created_at: new Date().toISOString(), notes: row.notes || "" };
-  if (useSupabase) return sb("cases", { method: "POST", body: JSON.stringify(row) });
+  if (useSupabase) return sb("web_cases", { method: "POST", body: JSON.stringify(row) });
   await store().setJSON(row.code, full, { onlyIfNew: true });
   return full;
 }
 
 export async function listCases(limit = 500): Promise<CaseRow[]> {
-  if (useSupabase) return sb(`cases?select=*&order=created_at.desc&limit=${limit}`);
+  if (useSupabase) return sb(`web_cases?select=*&order=created_at.desc&limit=${limit}`);
   const s = store();
   const { blobs } = await s.list();
   const rows = await Promise.all(blobs.map((b) => s.get(b.key, { type: "json" }) as Promise<CaseRow | null>));
@@ -67,7 +67,7 @@ export async function listCases(limit = 500): Promise<CaseRow[]> {
 }
 
 export async function updateCase(code: string, patch: Partial<CaseRow>) {
-  if (useSupabase) return sb(`cases?code=eq.${encodeURIComponent(code)}`, { method: "PATCH", body: JSON.stringify(patch) });
+  if (useSupabase) return sb(`web_cases?code=eq.${encodeURIComponent(code)}`, { method: "PATCH", body: JSON.stringify(patch) });
   const s = store();
   const cur = (await s.get(code, { type: "json" })) as CaseRow | null;
   if (!cur) throw new Error("case not found");
@@ -77,7 +77,7 @@ export async function updateCase(code: string, patch: Partial<CaseRow>) {
 export async function findCase(code: string, mobile: string) {
   if (useSupabase) {
     const rows = (await sb(
-      `cases?select=code,created_at,lender,status,follow_up_on&code=eq.${encodeURIComponent(code)}&mobile=eq.${encodeURIComponent(mobile)}&limit=1`,
+      `web_cases?select=code,created_at,lender,status,follow_up_on&code=eq.${encodeURIComponent(code)}&mobile=eq.${encodeURIComponent(mobile)}&limit=1`,
     )) as CaseRow[];
     return rows[0] || null;
   }

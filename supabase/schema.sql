@@ -2,7 +2,7 @@
 
 create extension if not exists pgcrypto;
 
-create table if not exists public.cases (
+create table if not exists public.web_cases (
   id uuid primary key default gen_random_uuid(),
   code text unique not null,
   created_at timestamptz not null default now(),
@@ -20,9 +20,22 @@ create table if not exists public.cases (
   notes text default ''
 );
 
-create index if not exists cases_created_idx on public.cases (created_at desc);
-create index if not exists cases_lookup_idx on public.cases (code, mobile);
+create index if not exists web_cases_created_idx on public.web_cases (created_at desc);
+create index if not exists web_cases_lookup_idx on public.web_cases (code, mobile);
 
 -- Row Level Security ON: browser se koi seedha table nahi padh sakta.
 -- Website sirf server par service role key se padhti/likhti hai.
-alter table public.cases enable row level security;
+alter table public.web_cases enable row level security;
+
+-- Contact / feedback sandesh
+create table if not exists public.web_messages (
+  id text primary key,
+  created_at timestamptz not null default now(),
+  name text not null,
+  contact text not null,
+  message text not null,
+  type text not null default 'other',
+  done boolean not null default false
+);
+create index if not exists web_messages_created_idx on public.web_messages (created_at desc);
+alter table public.web_messages enable row level security;
