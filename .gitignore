@@ -9,3 +9,4 @@ android/build/
 .apk-cache/
 public/arzinawees.apk
 *.jks
+*.tsbuildinfo
