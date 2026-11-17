@@ -7,6 +7,28 @@ type Row = {
   threats: string[]; numbers: string; severe: boolean; status: string; follow_up_on: string; notes: string;
 };
 
+const THREAT_HI: Record<string, string> = {
+  abuse: "गाली", family: "घरवालों को धमकी", contacts: "कॉन्टैक्ट्स को कॉल", photo: "फ़ोटो morph", rape: "यौन हिंसा की धमकी",
+  life: "जान की धमकी", home: "घर आने की धमकी", night: "रात/सुबह कॉल", many: "बहुत सारी कॉल", office: "ऑफ़िस में कॉल",
+};
+
+// Ek rang ki horizontal bars (magnitude). Hover par title se poori value.
+function Bars({ data, unit = "" }: { data: [string, number][]; unit?: string }) {
+  const max = Math.max(1, ...data.map((d) => d[1]));
+  if (!data.length) return <p>अभी कोई डेटा नहीं</p>;
+  return (
+    <div className="bars">
+      {data.map(([l, n]) => (
+        <div className="bar-row" key={l} title={`${l}: ${n}${unit}`}>
+          <span className="lbl">{l}</span>
+          <span className="track"><span className="fill" style={{ width: `${(n / max) * 100}%`, display: "block" }} /></span>
+          <b>{n}{unit}</b>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 const STATUSES: [string, string][] = [
   ["sent", "भेजी गई"],
   ["reply_received", "जवाब आया"],
@@ -68,6 +90,38 @@ export default function Admin() {
     return [...m.entries()].sort((a, b) => b[1] - a[1]).slice(0, 10);
   }, [rows]);
 
+  const charts = useMemo(() => {
+    const r = rows || [];
+    const status = STATUSES.map(([v, l]) => [l, r.filter((x) => x.status === v).length] as [string, number]);
+    const tm = new Map<string, number>();
+    r.forEach((x) => (x.threats || []).forEach((t) => tm.set(t, (tm.get(t) || 0) + 1)));
+    const threats = [...tm.entries()].sort((a, b) => b[1] - a[1]).map(([k, n]) => [THREAT_HI[k] || k, n] as [string, number]);
+    // pichhle 12 hafte
+    const weeks: { label: string; n: number }[] = [];
+    const start = new Date();
+    start.setHours(0, 0, 0, 0);
+    start.setDate(start.getDate() - start.getDay() - 7 * 11);
+    for (let i = 0; i < 12; i++) {
+      const a = new Date(start.getTime() + i * 7 * 864e5);
+      const b = new Date(a.getTime() + 7 * 864e5);
+      weeks.push({
+        label: a.toLocaleDateString("hi-IN", { day: "numeric", month: "short" }),
+        n: r.filter((x) => { const d = new Date(x.created_at); return d >= a && d < b; }).length,
+      });
+    }
+    // company ke hisaab se kitne % suljhe (kam se kam 2 case)
+    const lm = new Map<string, { n: number; ok: number }>();
+    r.forEach((x) => {
+      const k = x.lender.replace(/\s*\(.*\)\s*$/, "");
+      const v = lm.get(k) || { n: 0, ok: 0 };
+      v.n += 1;
+      if (x.status === "resolved") v.ok += 1;
+      lm.set(k, v);
+    });
+    const resolveRate = [...lm.entries()].filter(([, v]) => v.n >= 2).map(([k, v]) => [`${k} (${v.n})`, Math.round((v.ok / v.n) * 100)] as [string, number]).sort((a, b) => b[1] - a[1]).slice(0, 10);
+    return { status, threats, weeks, resolveRate };
+  }, [rows]);
+
   if (!rows) {
     return (
       <div className="wrap narrow prose">
@@ -107,6 +161,34 @@ export default function Admin() {
           {numbersTop.length ? numbersTop.map(([n, c]) => (
             <div key={n} style={{ display: "flex", justifyContent: "space-between", gap: 8 }}><span>{n}</span><b>{c}</b></div>
           )) : <p>अभी कोई नहीं</p>}
+        </div>
+      </div>
+      <div className="two" style={{ marginBottom: 20 }}>
+        <div className="sheet">
+          <h3>हर हफ़्ते नई अर्ज़ियाँ (पिछले 12 हफ़्ते)</h3>
+          <div className="cols" role="img" aria-label="हफ़्तेवार अर्ज़ियाँ">
+            {charts.weeks.map((w) => (
+              <div key={w.label} title={`${w.label} से: ${w.n}`} style={{ height: `${(w.n / Math.max(1, ...charts.weeks.map((x) => x.n))) * 100}%` }} />
+            ))}
+          </div>
+          <div className="cols-x">{charts.weeks.map((w, i) => <span key={w.label}>{i % 3 === 0 ? w.label : ""}</span>)}</div>
+          <details style={{ marginTop: 8 }}>
+            <summary>टेबल</summary>
+            {charts.weeks.map((w) => <div key={w.label} style={{ display: "flex", justifyContent: "space-between" }}><span>{w.label}</span><b>{w.n}</b></div>)}
+          </details>
+        </div>
+        <div className="sheet">
+          <h3>स्टेटस</h3>
+          <Bars data={charts.status} />
+        </div>
+        <div className="sheet">
+          <h3>किस तरह की धमकी सबसे ज़्यादा</h3>
+          <Bars data={charts.threats} />
+        </div>
+        <div className="sheet">
+          <h3>कंपनी के हिसाब से सुलझे केस (%)</h3>
+          <p style={{ color: "var(--muted)", fontSize: ".85rem", marginTop: 0 }}>सिर्फ़ 2+ केस वाली कंपनियाँ; ब्रैकेट में कुल केस</p>
+          <Bars data={charts.resolveRate} unit="%" />
         </div>
       </div>
       <details className="sheet" style={{ marginBottom: 18 }}>

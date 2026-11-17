@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Logo } from "./Header";
+import { ShareSite } from "./Tools";
 import { getLang } from "@/lib/lang";
 import { t as tr } from "@/lib/i18n";
 
@@ -30,6 +31,15 @@ export default async function Footer() {
             </ul>
           </div>
           <div>
+            <h4>{t("foot.tools")}</h4>
+            <ul>
+              <li><Link href="/aage">{t("nav.aage")}</Link></li>
+              <li><Link href="/saboot">{t("nav.saboot")}</Link></li>
+              <li><Link href="/loan-app-check">{t("nav.appcheck")}</Link></li>
+              <li><Link href="/number-check">{t("nav.numcheck")}</Link></li>
+            </ul>
+          </div>
+          <div>
             <h4>{t("foot.info")}</h4>
             <ul>
               <li><Link href="/haq">{t("nav.haq")}</Link></li>
@@ -52,6 +62,7 @@ export default async function Footer() {
             </ul>
           </div>
         </div>
+        <div className="no-print"><ShareSite /></div>
         <div className="foot-legal">
           <p>{t("foot.legal")}</p>
           <p>{t("foot.emergency")}</p>

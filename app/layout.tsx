@@ -3,6 +3,7 @@ import "./globals.css";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import Helper from "@/components/Helper";
+import FollowBanner from "@/components/FollowBanner";
 import { LangProvider } from "@/components/LangProvider";
 import { getLang } from "@/lib/lang";
 import { FONT_FAMILY, t } from "@/lib/i18n";
@@ -62,7 +63,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
       <body>
         <LangProvider lang={lang}>
           <Header />
-          
+          <FollowBanner />
           <main>{children}</main>
           <Footer />
           <Helper />

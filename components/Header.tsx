@@ -30,6 +30,10 @@ export default async function Header() {
   const lang = await getLang();
   const nav: [string, string][] = NAV_KEYS.map(([h, k]) => [h, t(lang, k)]);
   const extra: [string, string][] = [
+    ["/aage", t(lang, "nav.aage")],
+    ["/saboot", t(lang, "nav.saboot")],
+    ["/loan-app-check", t(lang, "nav.appcheck")],
+    ["/number-check", t(lang, "nav.numcheck")],
     ["/faq", t(lang, "nav.faq")],
     ["/about", t(lang, "nav.about")],
     ["/contact", t(lang, "nav.contact")],

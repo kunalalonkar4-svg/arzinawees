@@ -6,6 +6,9 @@ import { isSevere, templateDraft } from "@/lib/complaint";
 import { Attachment, buildMime, getAccessToken, gmailComposeUrl, sendViaGmail, shrinkImage } from "@/lib/gmail";
 import { useLang, useT } from "./LangProvider";
 import { LOCALE } from "@/lib/i18n";
+import Link from "next/link";
+import { VoiceButton, ShareSite } from "./Tools";
+import { addDays, calendarUrl, diaryNumbers, diaryText, getDiary, saveCase, today } from "@/lib/local";
 
 type Props = { lenders: Lender[]; googleClientId: string };
 type FileItem = Attachment & { url?: string; id: string };
@@ -55,6 +58,8 @@ export default function Wizard({ lenders, googleClientId }: Props) {
   const [sending, setSending] = useState(false);
   const [done, setDone] = useState<{ code: string; follow: string; saved: boolean } | null>(null);
   const [copied, setCopied] = useState(false);
+  const [remember, setRemember] = useState(true);
+  const [diaryN, setDiaryN] = useState(0);
 
   const lender = lenders.find((l) => l.id === lenderId);
   const lenderName = lenderId === OTHER_LENDER_ID ? otherName.trim() : lender ? `${lender.name} (${lender.legalName})` : "";
@@ -72,6 +77,18 @@ export default function Wizard({ lenders, googleClientId }: Props) {
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: "smooth" });
   }, [step]);
+
+  useEffect(() => setDiaryN(getDiary().length), []);
+
+  // Saboot diary ki entries se numbers aur ghatnaon ka vivaran bharna
+  function fillFromDiary() {
+    const d = getDiary();
+    const have = numbers.split(/[\n,]+/).map((x) => x.trim()).filter(Boolean);
+    const add = diaryNumbers(d).filter((n) => !have.includes(n));
+    if (add.length) setNumbers([...have, ...add].join("\n"));
+    const txt = diaryText(d);
+    if (txt && !story.includes(txt)) setStory((p) => (p ? p + "\n\n" : "") + "Record of incidents:\n" + txt);
+  }
 
   // /shikayat?lender=kreditbee se aaye to company pehle se chuni ho
   useEffect(() => {
@@ -191,7 +208,15 @@ export default function Wizard({ lenders, googleClientId }: Props) {
       })
         .then((r) => r.json())
         .catch(() => ({}));
-      setDone({ code: data.code || "—", follow: data.follow_up_on || "", saved: Boolean(data.saved) });
+      const code = data.code || "AR-" + Math.random().toString(36).slice(2, 8).toUpperCase();
+      const follow = data.follow_up_on || addDays(today(), 7);
+      if (remember) {
+        saveCase({
+          code, sentOn: today(), followUp: follow, name, mobile: mobile.replace(/\D/g, "").slice(-10), city, lenderName, loanId,
+          to, cc, subject, threats, numbers, incidentDate, story: story.slice(0, 2500),
+        });
+      }
+      setDone({ code, follow, saved: Boolean(data.saved) });
     } catch (e: any) {
       setError(e.message || t("e.send"));
     } finally {
@@ -225,12 +250,28 @@ export default function Wizard({ lenders, googleClientId }: Props) {
             <li>{t("d.n3")}</li>
             <li>{t("d.n4")}</li>
           </ul>
+          <h3 style={{ marginTop: 18 }}>{t("d.remT")}</h3>
+          <div className="btn-row" style={{ marginTop: 6 }}>
+            <a className="btn btn-ghost btn-small" target="_blank" rel="noopener noreferrer"
+              href={calendarUrl(t("cal.t7", { lender: lenderName }), done.follow, `${done.code}\n${typeof window !== "undefined" ? window.location.origin : ""}/aage?code=${done.code}`)}>
+              {t("d.cal7")}
+            </a>
+            <a className="btn btn-ghost btn-small" target="_blank" rel="noopener noreferrer"
+              href={calendarUrl(t("cal.t30", { lender: lenderName }), addDays(today(), 30), `${done.code}\n${typeof window !== "undefined" ? window.location.origin : ""}/aage?code=${done.code}&tab=rbi`)}>
+              {t("d.cal30")}
+            </a>
+          </div>
+          <div className="btn-row">
+            <Link className="btn btn-primary btn-small" href={`/aage?code=${encodeURIComponent(done.code)}`}>{t("d.aageBtn")}</Link>
+          </div>
           {severe && (
             <div className="emergency" style={{ marginTop: 16 }}>
               <h3>{t("d.policeT")}</h3>
               <p style={{ margin: 0 }}>{t("d.policeD")}</p>
+              <p style={{ margin: "8px 0 0" }}><Link href={`/aage?code=${encodeURIComponent(done.code)}&tab=pol`}>{t("ag.t3")} →</Link></p>
             </div>
           )}
+          <div className="btn-row"><ShareSite /></div>
           <p className="hero-note" style={{ marginTop: 16 }}>
             {t("d.manas")}
           </p>
@@ -324,6 +365,11 @@ export default function Wizard({ lenders, googleClientId }: Props) {
               <p style={{ margin: 0 }}>{t("w.sevText")}</p>
             </div>
           )}
+          {diaryN > 0 && (
+            <button type="button" className="btn btn-ghost btn-small" style={{ marginBottom: 14 }} onClick={fillFromDiary}>
+              {t("w.fromDiary", { n: diaryN })}
+            </button>
+          )}
           <div className="field">
             <label htmlFor="numbers">{t("w.numbers")}</label>
             <textarea id="numbers" value={numbers} onChange={(e) => setNumbers(e.target.value)} placeholder={"+91 88XXXXXXXX\n+91 91XXXXXXXX"} style={{ minHeight: 90 }} />
@@ -335,6 +381,7 @@ export default function Wizard({ lenders, googleClientId }: Props) {
           <div className="field">
             <label htmlFor="story">{t("w.story")}</label>
             <textarea id="story" value={story} onChange={(e) => setStory(e.target.value)} placeholder={t("w.storyPh")} />
+            <VoiceButton onText={(s) => setStory((p) => (p ? p + " " : "") + s)} />
             <span className="hint">{t("w.noAadhaar")}</span>
           </div>
           <div className="field">
@@ -444,6 +491,14 @@ export default function Wizard({ lenders, googleClientId }: Props) {
             <label className="check">
               <input type="checkbox" id="truth" checked={agreeTruth} onChange={(e) => setAgreeTruth(e.target.checked)} />
               <span>{t("w.truth")}</span>
+            </label>
+            <label className="check">
+              <input type="checkbox" id="remember" checked={remember} onChange={(e) => setRemember(e.target.checked)} />
+              <span>
+                {t("w.remember")}
+                <br />
+                <small style={{ color: "var(--muted)" }}>{t("w.rememberHint")}</small>
+              </span>
             </label>
             <label className="check">
               <input type="checkbox" id="agree" checked={agreeSend} onChange={(e) => setAgreeSend(e.target.checked)} />

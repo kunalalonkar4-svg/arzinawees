@@ -64,7 +64,8 @@ export default function Status() {
           <h3>{t(`su.st.${res.status}`)}</h3>
           {res.status === "sent" && res.follow_up_on && (
             <p>
-              {t("su.follow", { date: fmt(res.follow_up_on) })} <Link href="/shikayat">{t("cta.short")} →</Link>
+              {t("su.follow", { date: fmt(res.follow_up_on) })}{" "}
+              <Link href={`/aage?code=${encodeURIComponent(res.code)}`}>{t("d.aageBtn")}</Link>
             </p>
           )}
         </div>

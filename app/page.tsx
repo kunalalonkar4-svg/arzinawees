@@ -74,6 +74,28 @@ export default async function Home() {
       <section className="block">
         <div className="wrap">
           <div className="sec-head center">
+            <span className="eyebrow">{t("tl.eyebrow")}</span>
+            <h2>{t("tl.title")}</h2>
+          </div>
+          <div className="grid-cards">
+            {[
+              ["/aage", "nav.aage", "tl.aage"],
+              ["/saboot", "nav.saboot", "tl.saboot"],
+              ["/loan-app-check", "nav.appcheck", "tl.app"],
+              ["/number-check", "nav.numcheck", "tl.num"],
+            ].map(([h, k, d]) => (
+              <Link key={h} href={h} className="card-link reveal">
+                <h3>{t(k)} →</h3>
+                <p>{t(d)}</p>
+              </Link>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section className="block">
+        <div className="wrap">
+          <div className="sec-head center">
             <span className="eyebrow">{t("p.eyebrow")}</span>
             <h2>{t("p.title")}</h2>
             <p>{t("p.sub")}</p>

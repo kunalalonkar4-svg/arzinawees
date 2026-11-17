@@ -13,9 +13,12 @@ export const LANG_CODES = LANGS.map((l) => l.code) as Lang[];
 export const isLang = (x: unknown): x is Lang => typeof x === "string" && (LANG_CODES as string[]).includes(x);
 export const LOCALE: Record<Lang, string> = { hi: "hi-IN", en: "en-IN", mr: "mr-IN", bn: "bn-IN", te: "te-IN", ta: "ta-IN" };
 
+import { X } from "./i18n-x";
+
 type Row = [string, string, string, string, string, string];
 
 const D: Record<string, Row> = {
+  ...X,
   // ---------- common ----------
   "brand.tag": ["आपकी अर्ज़ी, आपकी आवाज़", "Your complaint, your voice", "तुमचा अर्ज, तुमचा आवाज", "আপনার অভিযোগ, আপনার কণ্ঠস্বর", "మీ ఫిర్యాదు, మీ గొంతు", "உங்கள் புகார், உங்கள் குரல்"],
   "nav.how": ["कैसे काम करता है", "How it works", "हे कसे काम करते", "কীভাবে কাজ করে", "ఎలా పని చేస్తుంది", "எப்படி செயல்படுகிறது"],
